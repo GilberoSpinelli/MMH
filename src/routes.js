@@ -1,11 +1,12 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const prisma = require("./config/prismaClient");  // Certifique-se de que o Prisma está configurado corretamente
+const prisma = require("./config/prismaClient");
+const autenticar = require("./authMiddleware");  // Importando o middleware de autenticação
 
 const router = express.Router();
 
-// Rota para criar um usuário
+// Rota para criar um usuário (não protegida, pois o cadastro não exige login)
 router.post("/usuarios", async (req, res) => {
   try {
     const { nome, email, senha, tipo } = req.body;
@@ -27,12 +28,11 @@ router.post("/usuarios", async (req, res) => {
       data: {
         nome,
         email,
-        senha: senhaHash, // Armazenando a senha criptografada
+        senha: senhaHash,
         tipo,
       },
     });
 
-    // Resposta de sucesso
     res.json({ mensagem: "Usuário cadastrado com sucesso!", usuario: novoUsuario });
   } catch (error) {
     console.error("Erro ao criar usuário:", error);
@@ -40,7 +40,7 @@ router.post("/usuarios", async (req, res) => {
   }
 });
 
-// Rota de login
+// Rota de login (não protegida, pois é necessária para gerar o token)
 router.post("/login", async (req, res) => {
   try {
     const { email, senha } = req.body;
@@ -63,7 +63,7 @@ router.post("/login", async (req, res) => {
     // Gerar o token
     const token = jwt.sign(
       { id: usuario.id, email: usuario.email, tipo: usuario.tipo },
-      process.env.JWT_SECRET || "secreta", // Substitua com a chave secreta
+      process.env.JWT_SECRET || "secreta",
       { expiresIn: "1h" }
     );
 
@@ -74,8 +74,8 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Rota para listar todos os usuários
-router.get("/usuarios", async (req, res) => {
+// Rota para listar todos os usuários (protegida por autenticação)
+router.get("/usuarios", autenticar, async (req, res) => {
   try {
     console.log("🔹 GET /usuarios foi chamado!");
     const usuarios = await prisma.usuario.findMany();
